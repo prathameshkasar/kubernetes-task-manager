@@ -1,0 +1,85 @@
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: db-init
+  namespace: task-app
+
+spec:
+
+  backoffLimit: 3
+
+  template:
+
+    metadata:
+
+      labels:
+        app: db-init
+
+    spec:
+
+      restartPolicy: Never
+
+      containers:
+
+        - name: mysql-client
+
+          image: mysql:8.0
+
+          env:
+
+            - name: MYSQL_ROOT_PASSWORD
+
+              valueFrom:
+
+                secretKeyRef:
+
+                  name: task-secret
+
+                  key: MYSQL_ROOT_PASSWORD
+
+          command:
+
+            - /bin/sh
+
+            - -c
+
+          args:
+
+            - |
+
+              echo "Waiting for MySQL..."
+
+              until mysqladmin ping -h mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" --silent; do
+
+                sleep 3
+
+              done
+
+              echo "MySQL is ready"
+
+              mysql -h mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" taskdb <<'EOF'
+
+              CREATE TABLE IF NOT EXISTS tasks (
+                  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                  title VARCHAR(255) NOT NULL,
+                  completed BOOLEAN NOT NULL DEFAULT FALSE
+              );
+
+              INSERT INTO tasks (title, completed)
+              SELECT 'Learn Kubernetes Pods', false
+              WHERE NOT EXISTS (
+                  SELECT 1 FROM tasks
+                  WHERE title = 'Learn Kubernetes Pods'
+              );
+
+              INSERT INTO tasks (title, completed)
+              SELECT 'Practice Kubernetes Services', false
+              WHERE NOT EXISTS (
+                  SELECT 1 FROM tasks
+                  WHERE title = 'Practice Kubernetes Services'
+              );
+
+              EOF
+
+              echo "Database initialization completed."

@@ -1,0 +1,78 @@
+apiVersion: batch/v1
+kind: CronJob
+
+metadata:
+  name: mysql-backup
+  namespace: task-app
+
+spec:
+
+  schedule: "*/5 * * * *"
+
+  successfulJobsHistoryLimit: 3
+
+  failedJobsHistoryLimit: 2
+
+  jobTemplate:
+
+    spec:
+
+      template:
+
+        spec:
+
+          restartPolicy: OnFailure
+
+          containers:
+
+            - name: mysql-backup
+
+              image: mysql:8.0
+
+              env:
+
+                - name: MYSQL_ROOT_PASSWORD
+
+                  valueFrom:
+
+                    secretKeyRef:
+
+                      name: task-secret
+
+                      key: MYSQL_ROOT_PASSWORD
+
+              command:
+
+                - /bin/sh
+
+                - -c
+
+              args:
+
+                - |
+
+                  mkdir -p /backup
+
+                  echo "Starting MySQL backup..."
+
+                  mysqldump \
+                    -h mysql \
+                    -uroot \
+                    -p"${MYSQL_ROOT_PASSWORD}" \
+                    taskdb > /backup/taskdb-$(date +%Y%m%d-%H%M%S).sql
+
+                  echo "Backup completed."
+
+              volumeMounts:
+
+                - name: backup-storage
+
+                  mountPath: /backup
+
+          volumes:
+
+            - name: backup-storage
+
+              persistentVolumeClaim:
+
+                claimName: backup-pvc

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Kubernetes Task Manager</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 16px;
+            cursor: pointer;
+        }
+
+        li {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<h1>Kubernetes Task Manager</h1>
+
+<div class="input-area">
+
+    <input
+        id="taskInput"
+        placeholder="Enter a task">
+
+    <button onclick="addTask()">
+        Add Task
+    </button>
+
+</div>
+
+<h2>Tasks</h2>
+
+<ul id="taskList"></ul>
+
+<script>
+
+async function loadTasks() {
+
+    const response = await fetch("/api/tasks");
+
+    const tasks = await response.json();
+
+    const list = document.getElementById("taskList");
+
+    list.innerHTML = "";
+
+    tasks.forEach(task => {
+
+        const li = document.createElement("li");
+
+        const span = document.createElement("span");
+
+        span.textContent = task.title;
+
+        const deleteButton =
+            document.createElement("button");
+
+        deleteButton.textContent = "Delete";
+
+        deleteButton.onclick =
+            () => deleteTask(task.id);
+
+        li.appendChild(span);
+
+        li.appendChild(deleteButton);
+
+        list.appendChild(li);
+
+    });
+}
+
+async function addTask() {
+
+    const input =
+        document.getElementById("taskInput");
+
+    const title = input.value.trim();
+
+    if (!title) {
+        return;
+    }
+
+    await fetch("/api/tasks", {
+
+        method: "POST",
+
+        headers: {
+            "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+            title: title,
+            completed: false
+        })
+
+    });
+
+    input.value = "";
+
+    loadTasks();
+}
+
+async function deleteTask(id) {
+
+    await fetch("/api/tasks/" + id, {
+        method: "DELETE"
+    });
+
+    loadTasks();
+}
+
+loadTasks();
+
+</script>
+
+</body>
+
+</html>
